@@ -1,0 +1,54 @@
+#! /bin/sh
+ 
+### BEGIN INIT INFO
+# Provides:          spawn-fcgi-php
+# Required-Start:    $all
+# Required-Stop:     $all
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: starts FastCGI for PHP
+# Description:       starts FastCGI for PHP using start-stop-daemon
+### END INIT INFO
+ 
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+NAME=spawn-fcgi
+PID=/var/run/spawn-fcgi.pid
+DAEMON=/usr/bin/spawn-fcgi
+DAEMON_OPTS="-f /usr/bin/php-cgi -a 127.0.0.1 -p 9000 -u www-data -g www-data -P $PID -C 2"
+ 
+test -x $DAEMON || exit 0
+ 
+set -e
+ 
+case "$1" in
+  start)
+        echo "Starting $NAME: "
+        start-stop-daemon --start --pidfile $PID --exec $DAEMON -- $DAEMON_OPTS
+        echo "done."
+        ;;
+  stop)
+        echo "Stopping $NAME: "
+        start-stop-daemon --stop  --pidfile $PID --retry 5
+        rm -f $PID
+        echo "done."
+        ;;
+  restart)
+        echo "Stopping $NAME: "
+	# Only try to stop if there is a running daemon... otherwise start.  Helps keep deploy happy.
+	if [ `ps -edaf | grep "php-cg[i]" | wc -l` -gt 0 ]; then
+	        start-stop-daemon --stop  --pidfile $PID --retry 5
+	        rm -f $PID
+	        echo "done..."
+	        sleep 1
+	fi
+        echo "Starting $NAME: "
+        start-stop-daemon --start --pidfile $PID --exec $DAEMON -- $DAEMON_OPTS
+        echo "done."
+        ;;
+  *)
+        echo "Usage: /etc/init.d/$NAME {start|stop|restart}" >&2
+        exit 1
+        ;;
+esac
+ 
+exit 0
